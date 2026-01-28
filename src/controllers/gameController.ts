@@ -122,9 +122,9 @@ export const createGame = async (req: Request, res: Response) => {
 
     // Create new game
     const DEFAULT_MAX_AGE: Record<"easy" | "medium" | "hard", number> = {
-      easy: 7,
+      easy: 5,
       medium: 5,
-      hard: 4,
+      hard: 5,
     };
     const game = await Game.create({
       user: userId,

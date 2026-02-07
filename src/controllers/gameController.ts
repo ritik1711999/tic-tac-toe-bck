@@ -109,7 +109,7 @@ export const createGame = async (req: Request, res: Response) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { vs, difficulty, opponentId } = req.body;
+  const { vs, difficulty, opponentId, timerDuration } = req.body;
   const userId = (req as any).user.id;
 
   try {
@@ -126,6 +126,29 @@ export const createGame = async (req: Request, res: Response) => {
       medium: 5,
       hard: 5,
     };
+
+    // Timer configuration per difficulty (chess-clock style)
+    // Easy: no timer, Medium: 3 minutes, Hard: 1 minute
+    // For local multiplayer, use provided timerDuration
+    const TIMER_CONFIG: Record<
+      "easy" | "medium" | "hard",
+      { enabled: boolean; duration: number }
+    > = {
+      easy: { enabled: false, duration: 0 },
+      medium: { enabled: true, duration: 180 },
+      hard: { enabled: true, duration: 60 },
+    };
+
+    let timerCfg: { enabled: boolean; duration: number };
+    if (vs === "AI" && difficulty) {
+      timerCfg = TIMER_CONFIG[difficulty as "easy" | "medium" | "hard"];
+    } else if (vs === "Human" && timerDuration) {
+      // For local multiplayer, enable timer with provided duration
+      timerCfg = { enabled: true, duration: timerDuration };
+    } else {
+      timerCfg = { enabled: false, duration: 0 };
+    }
+
     const game = await Game.create({
       user: userId,
       vs,
@@ -138,6 +161,12 @@ export const createGame = async (req: Request, res: Response) => {
       status: "in-progress",
       duration: 0,
       opponentId: vs === "Human" ? opponentId : undefined,
+      // Timer fields
+      timerEnabled: timerCfg.enabled,
+      turnDuration: timerCfg.duration,
+      playerXTimeRemaining: timerCfg.duration,
+      playerOTimeRemaining: timerCfg.duration,
+      timerLastStartedAt: timerCfg.enabled ? new Date() : null, // X goes first, start their clock
     });
 
     // Populate user reference

@@ -892,6 +892,65 @@ export class SocketService {
         },
       );
 
+      socket.on("request-hint", async (data: { gameId: string }) => {
+        try {
+          const { gameId } = data;
+
+          const game = await Game.findById(gameId);
+          if (!game) {
+            socket.emit("error", { message: "Game not found" });
+            return;
+          }
+
+          if (game.status !== "in-progress") {
+            socket.emit("error", { message: "Game is not active" });
+            return;
+          }
+
+          // Check if hints limit reached (max 3)
+          if (!game.hintsUsed) {
+            game.hintsUsed = 0;
+          }
+          if (game.hintsUsed >= 3) {
+            socket.emit("error", { message: "No hints remaining" });
+            return;
+          }
+
+          // Get current board state from moves
+          const moves = await Move.find({ gameId }).sort({ moveNumber: 1 });
+          const board =
+            moves.length > 0
+              ? gameEngine.getActiveBoardFromMoves(
+                  moves.map((m) => ({
+                    position: m.position,
+                    player: m.player,
+                    expiredOnMove: m.expiredOnMove ?? null,
+                  })),
+                )
+              : Array(9).fill("");
+
+          // Get best move suggestion using AI service
+          const suggestion = aiService.getSuggestions(board);
+
+          // Increment hints used
+          game.hintsUsed += 1;
+          await game.save();
+
+          // Send suggestion back to requesting client
+          socket.emit("hint-suggestion", {
+            gameId,
+            position: suggestion.position,
+            confidence: suggestion.confidence,
+            strategy: suggestion.strategy,
+            moveType: suggestion.moveType,
+            hintsRemaining: 3 - game.hintsUsed,
+          });
+        } catch (error) {
+          console.error("Error in request-hint:", error);
+          socket.emit("error", { message: "Failed to get hint" });
+        }
+      });
+
       socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
       });

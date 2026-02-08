@@ -19,6 +19,7 @@ export interface IGame extends Document {
   playerOTimeRemaining: number; // Remaining time in seconds for player O
   timerLastStartedAt: Date | null; // When the current player's clock started ticking
   timeoutLoser?: "X" | "O"; // Which player timed out (if game ended by timeout)
+  hintsUsed: number; // Number of hints used in this game (max 3 per game)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,6 +70,7 @@ const gameSchema = new Schema<IGame>(
     playerOTimeRemaining: { type: Number, default: 0 },
     timerLastStartedAt: { type: Date, default: null },
     timeoutLoser: { type: String, enum: ["X", "O"], default: null },
+    hintsUsed: { type: Number, default: 0, min: 0, max: 3 },
   },
   {
     timestamps: true,

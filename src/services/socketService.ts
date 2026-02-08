@@ -926,6 +926,7 @@ export class SocketService {
                     player: m.player,
                     expiredOnMove: m.expiredOnMove ?? null,
                   })),
+                  moves.length,
                 )
               : Array(9).fill("");
 
